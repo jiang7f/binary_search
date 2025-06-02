@@ -46,15 +46,15 @@ class Circuit(ABC, Generic[T]):
         result = []
 
         for metric in metrics_list:
-            if metric == 'num_params':
-                result.append(self.get_num_params())
-            else:
-                # 使用getattr来根据字符串'feedback'获取属性
-                try:
+            try:
+                if metric == 'num_params':
+                    result.append(self.get_num_params())
+                else:
+                    # 使用getattr来根据字符串'feedback'获取属性
                     feedback_value = getattr(self.analyzer, metric)
                     result.append(feedback_value)
-                except:
-                    result.append(None)
+            except:
+                result.append(None)
 
 
         return result

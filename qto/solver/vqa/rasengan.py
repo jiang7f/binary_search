@@ -10,7 +10,7 @@ from qto.model import LinearConstrainedBinaryOptimization as LcboModel
 from qto.utils import iprint
 from qto.utils.linear_system import to_row_echelon_form, greedy_simplification_of_transition_Hamiltonian
 from .abstract import VqaCircuit, Optimizer
-from ...provider import Provider
+from qto.provider import Provider
 from .circuit_decompose.circuit_components import obj_compnt, new_compnt
 from .explorer import QtoExplorer
 
