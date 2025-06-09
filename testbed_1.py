@@ -1,6 +1,6 @@
 should_print = True
 
-from qto.model import LinearConstrainedBinaryOptimization as LcboModel
+from qto.model import LinearConstrainedBinaryOptimization as LcboModel, set_coeff_type
 # from qto.solver.vqa.optimizer import CobylaOptimizer, AdamOptimizer
 from qto.provider import (
      AerProvider, AerGpuProvider, DdsimProvider, FakeBrisbaneProvider, FakeKyivProvider, FakeTorinoProvider, 
@@ -8,11 +8,12 @@ from qto.provider import (
 from qto.solver.exact import (
     QbsSolver,
 )
-
+set_coeff_type(float)
 # model ----------------------------------------------
 m = LcboModel() 
 x = m.addVars(3, name="x")
-m.setObjective(x[0] + x[1] + x[2], "max")
+b = 1
+m.setObjective(0.312 * x[0] + 0.15 * x[1] + x[2] * x[1] - b, "min")
 # m.addConstr(x[0] + x[1] + x[2] == 2)
 # m.addConstr(x[0] + x[1] == 1)
 # exit()
@@ -21,7 +22,8 @@ m.addConstr(x[0] + x[1] - x[2] == 0)
 
 print(m.lin_constr_mtx)
 # exit()
-# m.set_penalty_lambda(0)
+# m.set_
+# penalty_lambda(0)
 print(m)
 optimize = m.optimize()
 print(f"optimize_cost: {optimize}\n\n")

@@ -2,10 +2,12 @@ import numpy as np
 from qiskit import QuantumCircuit
 from qto.provider import Provider
 from qto.utils import iprint
+from qto.utils.get_phase import get_phase
 from qto.model import ModelOption
 from .abstract import ExactCircuit, ExactSolver
 from .option import QbsCircuitOption
 from .module.rsg_plus import rsg_plus_compnt
+from .module.obj import obj_compnt
 
 class QbsCircuit(ExactCircuit[QbsCircuitOption]):
     def __init__(self, circuit_option: QbsCircuitOption, model_option: ModelOption):
@@ -21,25 +23,33 @@ class QbsCircuit(ExactCircuit[QbsCircuitOption]):
     def create_circuit(self) -> QuantumCircuit:
         num_qubits = self.model_option.num_qubits        
         mcx_mode = self.circuit_option.mcx_mode
+        len_hd = len(self.model_option.Hd_bitstr_list)
+
+        if self.circuit_option.repeat is None:
+            repeat = num_qubits
+        else:
+            repeat = self.circuit_option.repeat
 
         if mcx_mode == "constant":
-            qc = QuantumCircuit(num_qubits + 2, num_qubits)
+            qc = QuantumCircuit(num_qubits + 1 + repeat * len_hd, num_qubits)
             anc_idx = [num_qubits, num_qubits + 1]
+            anc_v_to_w_idx = list(range(num_qubits + 1, num_qubits + 1 + repeat * len_hd))
         elif mcx_mode == "linear":
-            qc = QuantumCircuit(2 * num_qubits, num_qubits)
+            qc = QuantumCircuit(2 * num_qubits + repeat * len_hd, num_qubits)
             anc_idx = list(range(num_qubits, 2 * num_qubits))
+            anc_v_to_w_idx = list(range(2 * num_qubits, 2 * num_qubits + repeat * len_hd))
 
         qc = self.circuit_option.provider.transpile(qc)
         for i in np.nonzero(self.model_option.feasible_state)[0]:
             qc.x(i)
         
-        Hd_bitstr_list = np.tile(self.model_option.Hd_bitstr_list, (3, 1))
-        rsg_plus_compnt(
-            qc,
-            Hd_bitstr_list,
-            anc_idx,
-            mcx_mode,
-        )
+        Hd_bitstr_list = np.tile(self.model_option.Hd_bitstr_list, (repeat, 1))
+        # 通过rsg_plus制备可行解近似均匀叠加态
+        rsg_plus_compnt(qc, Hd_bitstr_list, anc_idx, mcx_mode, anc_v_to_w_idx)
+        # 把目标函数值映射到相位上
+        obj_compnt(qc=qc, scale=1, obj_dct=self.model_option.obj_dct, include_identity_term=True)
+        get_phase(qc, interested_bits=list(range(num_qubits)))
+        # exit()
         qc.measure(range(num_qubits), range(num_qubits)[::-1])
         transpiled_qc = self.circuit_option.provider.transpile(qc)
         return transpiled_qc
@@ -52,6 +62,7 @@ class QbsSolver(ExactSolver):
         prb_model,
         provider: Provider,
         shots: int = 1024,
+        repeat: int = None,
         mcx_mode: str = "constant",
         eps: float = 1e-0
     ):
@@ -60,6 +71,7 @@ class QbsSolver(ExactSolver):
         self.circuit_option = QbsCircuitOption(
             provider=provider,
             shots=shots,
+            repeat=repeat,
             mcx_mode=mcx_mode,
         )
         self.eps = eps
